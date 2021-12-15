@@ -124,7 +124,7 @@ Function New-AwsMfaUser
     [CmdletBinding(SupportsShouldProcess)]
     Param(
         [Parameter(Mandatory)]
-        [ArgumentCompleter({ Get-AwsDomains })]
+        [ArgumentCompleter({ Get-AwsDomains $args[2] })]
         [string]
         $Domain,
 
@@ -171,12 +171,12 @@ The default AWS region for the role
 The source profile to use for authentication. Tab-completion will list all
 available IAM and MFA users
 
-.PARAMETER IamUser
+.PARAMETER Iam
 
 The source profile to use for authentication. Tab-completion will list all
 available IAM users
 
-.PARAMETER MfaUser
+.PARAMETER Mfa
 
 The source profile to use for authentication. Tab-completion will list all
 available MFA users
@@ -198,19 +198,19 @@ Function New-AwsAssumeRole
         $Region,
 
         [Parameter(Mandatory, ParameterSetName='User')]
-        [ArgumentCompleter({ Get-AwsProfiles -Type Users })]
+        [ArgumentCompleter({ Get-AwsProfilesCompleter @args })]
         [string]
         $User,
 
         [Parameter(Mandatory, ParameterSetName='IamUser')]
-        [ArgumentCompleter({ Get-AwsProfiles -Type Iam })]
+        [ArgumentCompleter({ Get-AwsProfilesCompleter @args })]
         [string]
-        $IamUser,
+        $Iam,
 
         [Parameter(Mandatory, ParameterSetName='MfaUser')]
-        [ArgumentCompleter({ Get-AwsProfiles -Type Mfa })]
+        [ArgumentCompleter({ Get-AwsProfilesCompleter @args })]
         [string]
-        $MfaUser
+        $Mfa
     )
 
     $SourceProfile = If ($User) { $User } `
@@ -284,7 +284,7 @@ Function Set-AwsProfile
     [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName='All')]
     Param(
         [string]
-        [ArgumentCompleter({ Get-AwsDomains })]
+        [ArgumentCompleter({ Get-AwsDomains @args })]
         $Domain,
 
         [Parameter(Mandatory, ParameterSetName='All')]
@@ -454,8 +454,14 @@ Function Get-AwsDomain
 
 Function Get-AwsDomains
 {
+    Param(
+        [string]
+        $Search
+    )
+
     aws configure list-profiles `
         | ForEach-Object { Get-AwsDomain $_ } `
+        | Where-Object { $_ -like "$Search*" } `
         | Sort-Object -Unique
 }
 
@@ -479,11 +485,11 @@ Function Get-AwsProfiles
 {
     [CmdletBinding()]
     Param(
-        [ValidateSet('Iam', 'Mfa', 'Users', 'AssumeRole', 'All')]
+        [ValidateSet('Iam', 'Mfa', 'User', 'AssumeRole', 'All')]
         [string]
         $Type = 'All',
 
-        [ArgumentCompleter({ Get-AwsDomains })]
+        [ArgumentCompleter({ Get-AwsDomains $args[2] })]
         [string]
         $Domain
     )
@@ -494,7 +500,7 @@ Function Get-AwsProfiles
     {
         'Iam' { $profiles | Where-Object { $_ -like '*:iam' } }
         'Mfa' { $profiles | Where-Object { $_ -like '*:mfa' } }
-        'Users' { $profiles | Where-Object { $_ -like '*:iam' -or $_ -like '*:mfa' } }
+        'User' { $profiles | Where-Object { $_ -like '*:iam' -or $_ -like '*:mfa' } }
         'AssumeRole' { $profiles | Where-Object { -not ($_ -like '*:iam' -or $_ -like '*:mfa') } }
         'All' { $profiles }
     }
@@ -522,7 +528,9 @@ Function Get-AwsProfilesCompleter
 
     $profiles = Get-AwsProfiles -Type $Parameter -Domain $domain
 
-    $profiles = $profiles | Where-Object { $_ -like "*:*$Search*" }
+    $Search = If ($domain) { "*:*$Search*" } Else { "*$Search*" }
+
+    $profiles = $profiles | Where-Object { $_ -like $Search }
 
     If ($domain) { $profiles = $profiles | ForEach-Object { Get-AwsRoleName $_ } }
 
