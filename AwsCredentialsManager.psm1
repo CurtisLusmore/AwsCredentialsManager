@@ -50,7 +50,7 @@ A path to a CSV file containing the "Access key ID" and "Secret access key"
 #>
 Function New-AwsIamUser
 {
-    [CmdletBinding(DefaultParameterSetName='KeySecret')]
+    [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName='KeySecret')]
     Param(
         [Parameter(Mandatory)]
         [string]
@@ -83,8 +83,21 @@ Function New-AwsIamUser
 
     $profileName = "$Domain`:iam"
 
-    aws configure set aws_access_key_id $AccessKeyIdPlainText --profile $profileName
-    aws configure set aws_secret_access_key $SecretAccessKeyPlainText --profile $profileName
+    If ($PSCmdlet.ShouldProcess(
+        "aws configure set aws_access_key_id $(ConvertTo-MaskedString $AccessKeyIdPlainText) --profile $profileName",
+        "[profile $profileName]",
+        "Set aws_access_key_id to $(ConvertTo-MaskedString $AccessKeyIdPlainText)"))
+    {
+        aws configure set aws_access_key_id $AccessKeyIdPlainText --profile $profileName
+    }
+
+    If ($PSCmdlet.ShouldProcess(
+        "aws configure set aws_secret_access_key $(ConvertTo-MaskedString $SecretAccessKeyPlainText) --profile $profileName",
+        "[profile $profileName]",
+        "Set aws_secret_access_key to $(ConvertTo-MaskedString $SecretAccessKeyPlainText)"))
+    {
+        aws configure set aws_secret_access_key $SecretAccessKeyPlainText --profile $profileName
+    }
 }
 
 <#
@@ -108,7 +121,7 @@ The ARN of the user's MFA device
 #>
 Function New-AwsMfaUser
 {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess)]
     Param(
         [Parameter(Mandatory)]
         [ArgumentCompleter({ Get-AwsDomains })]
@@ -122,7 +135,13 @@ Function New-AwsMfaUser
 
     $mfaProfileName = "$domain`:mfa"
 
-    aws configure set mfa_device_arn $DeviceArn --profile $mfaProfileName 
+    If ($PSCmdlet.ShouldProcess(
+        "aws configure set mfa_device_arn $DeviceArn --profile $mfaProfileName",
+        "[profile $mfaProfileName]",
+        "Set mfa_device_arn to $DeviceArn"))
+    {
+        aws configure set mfa_device_arn $DeviceArn --profile $mfaProfileName
+    }
 }
 
 <#
@@ -164,7 +183,7 @@ available MFA users
 #>
 Function New-AwsAssumeRole
 {
-    [CmdletBinding(DefaultParameterSetName='User')]
+    [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName='User')]
     Param(
         [Parameter(Mandatory)]
         [string]
@@ -202,9 +221,29 @@ Function New-AwsAssumeRole
 
     $profileName = "$domain`:$RoleName"
 
-    aws configure set role_arn $RoleArn --profile $profileName
-    aws configure set source_profile $SourceProfile --profile $profileName
-    aws configure set region $Region --profile $profileName
+    If ($PSCmdlet.ShouldProcess(
+        "aws configure set role_arn $RoleArn --profile $profileName",
+        "[profile $profileName]",
+        "Set role_arn to $RoleArn"))
+    {
+        aws configure set role_arn $RoleArn --profile $profileName
+    }
+
+    If ($PSCmdlet.ShouldProcess(
+        "aws configure set source_profile $SourceProfile --profile $profileName",
+        "[profile $profileName]",
+        "Set source_profile to $SourceProfile"))
+    {
+        aws configure set source_profile $SourceProfile --profile $profileName
+    }
+
+    If ($PSCmdlet.ShouldProcess(
+        "aws configure set region $Region --profile $profileName",
+        "[profile $profileName]",
+        "Set region to $Region"))
+    {
+        aws configure set region $Region --profile $profileName
+    }
 }
 
 <#
@@ -242,7 +281,7 @@ available MFA profiles
 #>
 Function Set-AwsProfile
 {
-    [CmdletBinding(DefaultParameterSetName='All')]
+    [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName='All')]
     Param(
         [string]
         [ArgumentCompleter({ Get-AwsDomains })]
@@ -276,7 +315,13 @@ Function Set-AwsProfile
 
     $profileName = If ($Domain) { "$Domain`:$roleName" } Else { $RoleName }
 
-    $env:AWS_PROFILE = $profileName
+    If ($PSCmdlet.ShouldProcess(
+        "`$env:AWS_PROFILE = '$profileName'",
+        "`$env:AWS_PROFILE",
+        "Set value to $profileName"))
+    {
+        $env:AWS_PROFILE = $profileName
+    }
 }
 <#
 .SYNOPSIS
@@ -294,6 +339,7 @@ The MFA code
 #>
 Function Update-AwsMfaCredentials
 {
+    [CmdletBinding(SupportsShouldProcess)]
     Param(
         [SecureString]
         $Code,
@@ -329,13 +375,24 @@ Function Update-AwsMfaCredentials
 
     $deviceArn = aws configure get mfa_device_arn --profile $mfaProfileName
 
-    $resp = aws sts get-session-token `
-        --serial-number $deviceArn `
-        --token-code $codePlainText `
-        --duration-seconds 129600 <# 36hrs #> `
-        --profile $iamProfileName
+    If ($PSCmdlet.ShouldProcess(
+        "aws sts get-session-token --serial-number $deviceArn --token-code $(ConvertTo-MaskedString $codePlainText) --duration-seconds 129600 --profile $iamProfileName",
+        "[profile $iamProfileName]",
+        "Get session token"))
+    {
+        $resp = aws sts get-session-token `
+            --serial-number $deviceArn `
+            --token-code $codePlainText `
+            --duration-seconds 129600 <# 36hrs #> `
+            --profile $iamProfileName
 
-    If (-not $?)
+        If (-not $?)
+        {
+            Write-Error "Failed to acquire new session token"
+            Return
+        }
+    }
+    Else
     {
         Write-Error "Failed to acquire new session token"
         Return
@@ -348,10 +405,37 @@ Function Update-AwsMfaCredentials
     $sessionToken = $json.SessionToken
     $expiration = $json.Expiration.ToString("o")
 
-    aws configure set aws_access_key_id $accessKeyId --profile $mfaProfileName
-    aws configure set aws_secret_access_key $secretAccessKey --profile $mfaProfileName
-    aws configure set aws_session_token $sessionToken --profile $mfaProfileName
-    aws configure set expiration $expiration --profile $mfaProfileName
+    If ($PSCmdlet.ShouldProcess(
+        "aws configure set aws_access_key_id $(ConvertTo-MaskedString $accessKeyId) --profile $mfaProfileName",
+        "[profile $mfaProfileName]",
+        "Set aws_access_key_id to $(ConvertTo-MaskedString $accessKeyId)"))
+    {
+        aws configure set aws_access_key_id $accessKeyId --profile $mfaProfileName
+    }
+
+    If ($PSCmdlet.ShouldProcess(
+        "aws configure set aws_secret_access_key $(ConvertTo-MaskedString $accessKeyId) --profile $mfaProfileName",
+        "[profile $mfaProfileName]",
+        "Set aws_secret_access_key to $(ConvertTo-MaskedString $secretAccessKey)"))
+    {
+        aws configure set aws_secret_access_key $secretAccessKey --profile $mfaProfileName
+    }
+
+    If ($PSCmdlet.ShouldProcess(
+        "aws configure set aws_secret_access_key $(ConvertTo-MaskedString $accessKeyId) --profile $mfaProfileName",
+        "[profile $mfaProfileName]",
+        "Set aws_secret_access_key to $(ConvertTo-MaskedString $secretAccessKey)"))
+    {
+        aws configure set aws_session_token $sessionToken --profile $mfaProfileName
+    }
+
+    If ($PSCmdlet.ShouldProcess(
+        "aws configure set expiration $expiration --profile $mfaProfileName",
+        "[profile $mfaProfileName]",
+        "Set expiration to $expiration"))
+    {
+        aws configure set expiration $expiration --profile $mfaProfileName
+    }
 }
 
 
@@ -463,4 +547,15 @@ Function SecureStringToPlainText
             [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureString)
         )
     }
+}
+
+Function ConvertTo-MaskedString
+{
+    Param(
+        [Parameter(Mandatory)]
+        [String]
+        $String
+    )
+
+    $String -Replace '.','*'
 }
