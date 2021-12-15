@@ -12,7 +12,7 @@
 RootModule = 'AwsCredentialsManager.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.1'
+ModuleVersion = '0.1.1'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -104,10 +104,10 @@ PrivateData = @{
         # Tags = @()
 
         # A URL to the license for this module.
-        # LicenseUri = ''
+        LicenseUri = 'https://github.com/CurtisLusmore/AwsCredentialsManager/blob/main/LICENSE.md'
 
         # A URL to the main website for this project.
-        # ProjectUri = ''
+        ProjectUri = 'https://github.com/CurtisLusmore/AwsCredentialsManager'
 
         # A URL to an icon representing this module.
         # IconUri = ''

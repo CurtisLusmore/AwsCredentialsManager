@@ -16,8 +16,120 @@ set up and manage the following profiles:
     as the source profile,
 * etc.
 
+This module will help you to build and manage your AWS CLI `credentials` and
+`config` files to look something like the below:
 
-## IAM Profiles
+```
+# ~/.aws/credentials
+[work:iam]
+aws_access_key_id = <REDACTED>
+aws_secret_access_key = <REDACTED>
+[work:mfa]
+aws_access_key_id = <REDACTED>
+aws_secret_access_key = <REDACTED>
+aws_session_token = <REDACTED>
+[home:iam]
+aws_access_key_id = <REDACTED>
+aws_secret_access_key = <REDACTED>
+
+# ~/.aws/config
+[profile work:mfa]
+mfa_device_arn = arn:aws:iam::000000000000:mfa/your.name
+[profile work:dev]
+role_arn = arn:aws:iam::000000000000:role/PowerUsers
+source_profile = work:mfa
+region = ap-southeast-2
+[profile work:test]
+role_arn = arn:aws:iam::111111111111:role/PowerUsers
+source_profile = work:mfa
+region = ap-southeast-2
+[profile work:staging]
+role_arn = arn:aws:iam::222222222222:role/PowerUsers
+source_profile = work:mfa
+region = ap-southeast-2
+[profile home:project1]
+role_arn = arn:aws:iam::999999999999:role/PowerUsers
+source_profile = home:iam
+region = ap-southeast-2
+```
+
+It will also allow you to easily discover and switch between profiles, and
+manage temporary MFA session tokens which last up to 36 hours.
+
+
+## Why This Module?
+
+The major benefit of this module is the management of temporary MFA session
+tokens. The AWS CLI provides two ways of dealing with profiles which require
+MFA:
+
+### mfa_serial
+
+The [`mfa_serial`][1] configuration setting allows you to specify an MFA device
+ARN to use to generate temporary session tokens for a given role. Below is an
+example of such a configuration setup:
+
+```
+~/.aws/credentials
+[iam]
+aws_access_key_id = <REDACTED>
+aws_secret_access_key = <REDACTED>
+
+~/.aws/config
+[profile myrole]
+role_arn = arn:aws:iam::000000000000:role/PowerUsers
+source_profile = iam
+mfa_serial = arn:aws:iam::000000000000:mfa/your.name
+duration_seconds = 3600
+```
+
+When performing CLI actions from the `myrole` profile, you will be prompted for
+your MFA code and a temporary session token will be generated and cached for
+subsequent CLI actions.
+
+```
+> aws sts get-caller-identity
+Enter MFA code for arn:aws:iam::000000000000:mfa/your.name:
+{
+    "UserId": "...",
+    "Account": "...",
+    "Arn": "..."
+}
+```
+
+However, these session tokens will only be cached for [`duration_seconds`][2]
+seconds, which is typically capped to a maximum of 3600 (1 hour). This means
+that a typical workday could involve 8 or more MFA code prompts.
+
+
+### sts get-session-token
+
+An alternative is to use [`aws sts get-session-token`][3] to generate a
+temporary session token, which is typically capped to a much more generous
+maximum of 36 hours, meaning you will only be prompted for an MFA code once per
+day.
+
+The issue with this method is that persisting the session token into your
+credentials file or environment variables is left as an
+[exercise for the reader][4], which means that most users eventually end up
+implementing a variation of this PowerShell module themselves.
+
+
+## How to Use
+
+Everything you need to know to install, configure and use this module is
+described below.
+
+
+### Installation
+
+This module can be installed from [PSGallery][5] with the following:
+
+```
+> Install-Module -Name AwsCredentialsManager
+```
+
+### IAM Profiles
 
 To get started, let's create a new IAM user for your "work" domain.
 
@@ -53,7 +165,7 @@ aws_secret_access_key = <REDACTED>
 ```
 
 
-## MFA Profiles
+### MFA Profiles
 
 Some AWS environments are configured to require MFA when using the CLI. In
 these cases you will need to create a new profile which uses your IAM
@@ -85,7 +197,7 @@ This profile won't exist in the credentials file until we acquire a session
 token, which we'll get to a bit later.
 
 
-## Assume-role Profiles
+### Assume-role Profiles
 
 Most AWS environments are configured such that permissions are granted via
 roles which you need to assume. You might have one role per project or per
@@ -127,7 +239,7 @@ This profile will never appear in the credentials file because the credentials
 are provided by the linked source profile.
 
 
-## Setting the AWS Profile
+### Setting the AWS Profile
 
 The AWS Profile used by the CLI (when not specified explicitly via the
 `--profile` parameter) is specified by the `AWS_PROFILE` environment variable.
@@ -155,7 +267,7 @@ work:dev
 ```
 
 
-## Updating Temporary Session Token via MFA
+### Updating Temporary Session Token via MFA
 
 In order to use MFA profiles, or assume-role profiles which are backed by
 MFA profiles, you will need to acquire a temporary session token via MFA. Once
@@ -195,3 +307,8 @@ You can confirm that the session token provides access with the following.
 
 
 [0]: https://aws.amazon.com/cli/
+[1]: https://docs.aws.amazon.com/sdkref/latest/guide/setting-global-mfa_serial.html
+[2]: https://docs.aws.amazon.com/sdkref/latest/guide/setting-global-duration_seconds.html
+[3]: https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sts/get-session-token.html
+[4]: https://aws.amazon.com/premiumsupport/knowledge-center/authenticate-mfa-cli/
+[5]: https://www.powershellgallery.com/packages/AwsCredentialsManager
