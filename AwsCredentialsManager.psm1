@@ -295,9 +295,11 @@ The MFA code
 Function Update-AwsMfaCredentials
 {
     Param(
-        [Parameter(Mandatory)]
         [SecureString]
-        $Code
+        $Code,
+
+        [Switch]
+        $Force
     )
 
     If (-not (Get-AwsProfile))
@@ -309,6 +311,19 @@ Function Update-AwsMfaCredentials
     $domain = Get-AwsDomain (Get-AwsProfile)
     $iamProfileName = "$domain`:iam"
     $mfaProfileName = "$domain`:mfa"
+
+    $expiration = [DateTime](aws configure get expiration --profile $mfaProfileName)
+
+    If (-not $Force -and $expiration - [DateTime]::Now -gt [TimeSpan]::FromHours(1))
+    {
+        Write-Host "Session already valid until $expiration"
+        Return
+    }
+
+    If (-not $Code)
+    {
+        $Code = Read-Host -AsSecureString -Prompt "Code"
+    }
 
     $codePlainText = SecureStringToPlainText $Code
 
@@ -331,10 +346,12 @@ Function Update-AwsMfaCredentials
     $accessKeyId = $json.AccessKeyId
     $secretAccessKey = $json.SecretAccessKey
     $sessionToken = $json.SessionToken
+    $expiration = $json.Expiration.ToString("o")
 
     aws configure set aws_access_key_id $accessKeyId --profile $mfaProfileName
     aws configure set aws_secret_access_key $secretAccessKey --profile $mfaProfileName
     aws configure set aws_session_token $sessionToken --profile $mfaProfileName
+    aws configure set expiration $expiration --profile $mfaProfileName
 }
 
 
