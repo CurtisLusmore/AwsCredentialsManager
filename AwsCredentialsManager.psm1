@@ -214,8 +214,8 @@ Function New-AwsAssumeRole
     )
 
     $SourceProfile = If ($User) { $User } `
-        ElseIf ($IamUser) { $IamUser } `
-        Else { $Mfauser }
+        ElseIf ($Iam) { $Iam } `
+        Else { $Mfa }
 
     $domain = Get-AwsDomain $SourceProfile
 

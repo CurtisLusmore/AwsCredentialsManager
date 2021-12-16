@@ -216,11 +216,11 @@ Region: ap-southeast-2
 
 Note that the `-User` parameter will provide tab-completion values based on
 available IAM and MFA profiles you have already configured. There are also
-`-IamUser` and `-MfaUser` parameters as alternatives which will provide
-tab-completion values based on only IAM or MFA profiles respectively to make it
-even easier to find the correct profile. For example, you can type
-`New-AwsAssumeRole -MfaUser` and then press `Tab` and it will automatically
-suggest `work:mfa` as a possible source profile.
+`-Iam` and `-Mfa` parameters as alternatives which will provide tab-completion
+values based on only IAM or MFA profiles respectively to make it even easier to
+find the correct profile. For example, you can type `New-AwsAssumeRole -Mfa`
+and then press `Tab` and it will automatically suggest `work:mfa` as a possible
+source profile.
 
 You should now have another AWS profile named `work:dev`. You can confirm this
 by viewing the config file.
