@@ -124,7 +124,7 @@ Function New-AwsMfaUser
     [CmdletBinding(SupportsShouldProcess)]
     Param(
         [Parameter(Mandatory)]
-        [ArgumentCompleter({ Get-AwsDomains $args[2] })]
+        [ArgumentCompleter({ Get-AwsDomainsCompleter @args })]
         [string]
         $Domain,
 
@@ -284,7 +284,7 @@ Function Set-AwsProfile
     [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName='All')]
     Param(
         [string]
-        [ArgumentCompleter({ Get-AwsDomains @args })]
+        [ArgumentCompleter({ Get-AwsDomainsCompleter @args })]
         $Domain,
 
         [Parameter(Mandatory, ParameterSetName='All')]
@@ -362,7 +362,7 @@ Function Update-AwsMfaCredentials
 
     If (-not $Force -and $expiration - [DateTime]::Now -gt [TimeSpan]::FromHours(1))
     {
-        Write-Host "Session already valid until $expiration"
+        Write-Information "Session already valid until $expiration" -InformationAction Continue
         Return
     }
 
@@ -459,10 +459,19 @@ Function Get-AwsDomains
         $Search
     )
 
+    $searchLocal = $Search
+
     aws configure list-profiles `
         | ForEach-Object { Get-AwsDomain $_ } `
-        | Where-Object { $_ -like "$Search*" } `
+        | Where-Object { $_ -like "$searchLocal*" } `
         | Sort-Object -Unique
+}
+
+Function Get-AwsDomainsCompleter
+{
+    $Search = $args[2]
+
+    Get-AwsDomains -Search $Search
 }
 
 Function Get-AwsRoleName
@@ -489,7 +498,7 @@ Function Get-AwsProfiles
         [string]
         $Type = 'All',
 
-        [ArgumentCompleter({ Get-AwsDomains $args[2] })]
+        [ArgumentCompleter({ Get-AwsDomainsCompleter @args })]
         [string]
         $Domain
     )
@@ -511,18 +520,14 @@ Function Get-AwsProfiles
         Default { $profiles | Where-Object { $_ -like "$domain`:*" } }
     }
 
-    $profiles
+    $profiles | Sort-Object
 }
 
 Function Get-AwsProfilesCompleter
 {
-    Param(
-        $_0,
-        $Parameter,
-        $Search,
-        $_3,
-        $FakeBoundParameters
-    )
+    $Parameter = $args[1]
+    $Search = $args[2]
+    $FakeBoundParameters = $args[4]
 
     $domain = $FakeBoundParameters.Domain
 
