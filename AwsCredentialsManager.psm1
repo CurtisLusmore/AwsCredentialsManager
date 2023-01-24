@@ -354,7 +354,8 @@ Function Update-AwsMfaCredentials
         Return
     }
 
-    $domain = Get-AwsDomain (Get-AwsProfile)
+    $profile = Get-AwsProfile
+    $domain = Get-AwsDomain $profile
     $iamProfileName = "$domain`:iam"
     $mfaProfileName = "$domain`:mfa"
 
@@ -364,6 +365,14 @@ Function Update-AwsMfaCredentials
     {
         Write-Information "Session already valid until $expiration" -InformationAction Continue
         Return
+    }
+
+    $region = aws configure get region --profile $profile
+    If (-not $region)
+    {
+        $region = 'us-east-1'
+        Write-Warning "No default region configured for $profile. Using $region"
+        Write-Warning "Run 'aws configure set region <region>' to set a default region"
     }
 
     If (-not $Code)
@@ -376,7 +385,7 @@ Function Update-AwsMfaCredentials
     $deviceArn = aws configure get mfa_device_arn --profile $mfaProfileName
 
     If ($PSCmdlet.ShouldProcess(
-        "aws sts get-session-token --serial-number $deviceArn --token-code $(ConvertTo-MaskedString $codePlainText) --duration-seconds 129600 --profile $iamProfileName",
+        "aws sts get-session-token --serial-number $deviceArn --token-code $(ConvertTo-MaskedString $codePlainText) --duration-seconds 129600 --profile $iamProfileName --region $region",
         "[profile $iamProfileName]",
         "Get session token"))
     {
@@ -384,7 +393,8 @@ Function Update-AwsMfaCredentials
             --serial-number $deviceArn `
             --token-code $codePlainText `
             --duration-seconds 129600 <# 36hrs #> `
-            --profile $iamProfileName
+            --profile $iamProfileName `
+            --region $region
 
         If (-not $?)
         {
