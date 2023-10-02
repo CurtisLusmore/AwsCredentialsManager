@@ -243,19 +243,17 @@ are provided by the linked source profile.
 
 The AWS Profile used by the CLI (when not specified explicitly via the
 `--profile` parameter) is specified by the `AWS_PROFILE` environment variable.
-You can easily switch between available profiles with the following command.
+You can easily switch between available profiles, for example:
 
 ```
 > Set-AwsProfile -Domain work -All dev
 ```
 
-Note that the `-Domain` parameter will provide tab-completion values based on
-previously configured profiles. The `-All` parameter will also provide
-tab-completion values based on available profiles within the specified domain.
-There are also `-Iam`, `-Mfa` and `-AssumeRole` parameters as alternatives
-which will provide tab-completion values based on only IAM, MFA or assume-role
-profiles respectively to make it even easier to find the correct profile. For
-example, you can type `Set-AwsProfile -Domain work -AssumeRole` and then press
+`-All` refers to all available profiles within the selected domain.
+There are also `-Iam`, `-Mfa` and `-AssumeRole` parameters as alternatives, to
+allow selection of the AWS profile via the Iam profile, the Mfa profile, or the role to assume.
+Tab auto-completion is supported for these alternate parameters
+For example, you can type `Set-AwsProfile -Domain work -AssumeRole` and then press
 `Tab` and it will automatically suggest `dev` as a possible profile.
 
 You can confirm that the profile has been set by viewing the `AWS_PROFILE`
