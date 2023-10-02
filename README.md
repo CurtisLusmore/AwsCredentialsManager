@@ -251,8 +251,8 @@ The module allows you to set this easily, by switching between available profile
 
 `-All` refers to all available profiles within the selected domain.
 There are also `-Iam`, `-Mfa` and `-AssumeRole` parameters as alternatives, to
-allow selection of the profile via the related Iam or Mfa configuration, or the environment.
-Tab auto-completion is supported for these alternate parameters.
+allow selection of a profile via a related Iam or Mfa configuration, or a role assumed by the profile.
+Tab auto-completion of the profile environment name is supported for all parameters.
 For example, you can type `Set-AwsProfile -Domain work -AssumeRole` and then press
 `Tab` and it will automatically suggest `dev` as a possible profile.
 
