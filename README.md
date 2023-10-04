@@ -251,7 +251,8 @@ The module allows you to set this easily, by switching between available profile
 
 `-All` refers to all available profiles belonging to the selected domain.
 Tab completion is available for the domain, and the profile name within the domain.
-Note - you can use `-Iam`, `-Mfa` or `-AssumeRole` as alternate parameters to -All.
+Note - you can use `-Iam`, `-Mfa` or `-AssumeRole` as alternate parameters to `-All`.
+
 For example you can type `Set-AwsProfile -Domain work -AssumeRole` and then press
 `Tab` and it will automatically suggest `dev` as a possible profile.
 
